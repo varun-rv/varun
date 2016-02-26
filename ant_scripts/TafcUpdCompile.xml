@@ -48,7 +48,7 @@
         </then>
     </if>   
     
-<!-- Display compilation result -->
+<!-- Display compilation result --->
     <available file="${homedir}${file.separator}build${file.separator}log${file.separator}${rel}.UPDATE.RESULT.${OsExtn}.log" type="file" property="T24UpdResult"/>
     <if>
         <isset property="T24UpdResult" />
