@@ -69,15 +69,9 @@
      <condition property="isWindows">                
          <os family="windows" />        
      </condition>
-    <if>
-       <equals arg1="${isWindows}" arg2="true" />
-	<then>
-           <property name="exectype" value="cmd"/>
-        </then>
-    <else>
-        <property name="exectype" value="sh"/>
-    </else>
-    </if>
+ 
+           
+        
     <propertyreset name="LogfilePath" value="${homedir}${file.separator}build${file.separator}log${file.separator}${TempUpdName}.log"/>
     <delete file="${homedir}${file.separator}build${file.separator}log${file.separator}${TempUpdName}.log"/>
          
@@ -89,13 +83,34 @@
        <!--Compile Updates in TAFC using Component Build --> 
 
             <propertyreset name="FailText" value="BUILD FAILED"/>
-            <echo message="Compiling Updates in TAFC ..."/>
-            <exec dir="${homedir}${file.separator}UPDATE.SOURCE${file.separator}${TempUpdName}.SOURCE${file.separator}T24BuildDependencies" executable="${exectype}" output="${homedir}${file.separator}build${file.separator}log${file.separator}${TempUpdName}.log" append="true">
+            <echo message="Compiling Update ${TempUpdName} in TAFC in ${UpdExtn} platform..."/>
+			
+		<if>
+			<equals arg1="${isWindows}" arg2="true" />
+			<then>
+            
+			<exec dir="${homedir}${file.separator}UPDATE.SOURCE${file.separator}${TempUpdName}.SOURCE${file.separator}T24BuildDependencies" executable="cmd" output="${homedir}${file.separator}build${file.separator}log${file.separator}${TempUpdName}.log" append="true">
                 <env key="T24_HOME" value="${homedir}${file.separator}..${file.separator}${rel}.BP${file.separator}T24_BP" /> 
-                <arg value="ant" />
+				<arg value="/c">
+                <arg value="${env.ANT_HOME}${file.separator}bin${file.separator}ant" />
                 <arg value="release-tafc" />
                 <arg value="-Divy.buildlist.includes=${Prod}${file.separator}${CompName}${file.separator}version.xml" />
             </exec>
+			
+			</then>
+		<else>
+			
+			<exec dir="${homedir}${file.separator}UPDATE.SOURCE${file.separator}${TempUpdName}.SOURCE${file.separator}T24BuildDependencies" executable="sh" output="${homedir}${file.separator}build${file.separator}log${file.separator}${TempUpdName}.log" append="true">
+                <env key="T24_HOME" value="${homedir}${file.separator}..${file.separator}${rel}.BP${file.separator}T24_BP" /> 
+				<arg value="${env.ANT_HOME}${file.separator}bin${file.separator}ant" />
+                <arg value="release-tafc" />
+                <arg value="-Divy.buildlist.includes=${Prod}${file.separator}${CompName}${file.separator}version.xml" />
+            </exec>
+			
+		</else>
+		</if>
+			
+			
             <concat destfile="${homedir}${file.separator}build${file.separator}log${file.separator}${TempUpdName}.log" append="true">
                 <filelist dir="${homedir}${file.separator}UPDATE.SOURCE${file.separator}${TempUpdName}.SOURCE${file.separator}build${file.separator}log" files="${CompName}-dist.log"/>
             </concat>
@@ -140,6 +155,21 @@
 
             </then>
             </if>
+
+         <resourcecount property="count.libs">
+            <fileset dir="${homedir}${file.separator}CLIENT.TARS${file.separator}${TempUpdName}_${UpdExtn}${file.separator}t24lib${file.separator}${CompLower}">
+                <include name="*"/>
+            </fileset>
+        </resourcecount>
+        <echo message="Count of lib in ${TempUpdName} is ${count.libs}"/>
+        
+        <if>
+            <equals arg1="${count.libs}" arg2="0" trim="true"/>
+            <then>
+                <property name="nolibs" value="No Libraries formed"/> 
+            </then>
+        </if>
+
     <tar longfile="gnu" destfile="${homedir}${file.separator}CLIENT.TARS${file.separator}${TempUpdName}_${UpdExtn}.tar" basedir="${homedir}${file.separator}CLIENT.TARS" includes="${TempUpdName}_${UpdExtn}${file.separator}**"/>
     <delete dir="${homedir}${file.separator}CLIENT.TARS${file.separator}${TempUpdName}_${UpdExtn}"/>
     <!-- remove <delete dir="${homedir}${file.separator}UPDATE.SOURCE${file.separator}${TempUpdName}.SOURCE"/> -->
@@ -166,6 +196,19 @@
 <!--            <scp trust="true" file="${homedir}${file.separator}CLIENT.TARS${file.separator}${TempUpdName}_${UpdExtn}.tar" todir="updlive:updlive@10.44.5.110:/storage/T24/updlive/updlive.run/TEMP.UPDATES"/> -->
         </else>
     </if>   
+
+    <if>
+        <isset property="nolibs" />
+        <then>
+            <mkdir dir="${homedir}${file.separator}build${file.separator}log${file.separator}${rel}.UPDATE.RESULT"/> 
+            <echo message="${TempUpdName} Update has no libs..!"/>
+            <echo message="${TempUpdName} Update has no libs..!" output="${homedir}${file.separator}build${file.separator}log${file.separator}${rel}.UPDATE.RESULT.${OsExtn}.log" append="true"/>
+            <copy file="${homedir}${file.separator}build${file.separator}log${file.separator}${TempUpdName}.log" todir="${homedir}${file.separator}build${file.separator}log${file.separator}${rel}.UPDATE.RESULT"/>
+        </then>
+    </if>   
+
+    <var name="count.libs" unset="true"/>
+    <var name="nolibs" unset="true"/>
 </target>
 
 <target name="Getsource">
