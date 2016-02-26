@@ -1,0 +1,254 @@
+<project name="T24TafcUpdates" default="all">
+
+<property environment="env" />
+<property name="homedir" value="${basedir}"/>
+<property name="sourcePath" value="/glodev4/intbkp/T24_Updates/Update_Sources"/>
+<property name="integUtilPath" value="/glodev5/t24bldin/bnk/bnk.run/INTEGUTIL/Integ_Utilities/T24_Updates/Update_Utilities"/>
+<property name="RegPathT24BP" value="/regstorage/updatebkp/buildtars"/>
+<property name="UpdExtn" value="${OsExtn}"/>
+
+<taskdef resource="net/sf/antcontrib/antlib.xml" /> 
+
+<scriptdef name="propertyreset" language="javascript"
+    description="Allows to assign @{property} new value">
+    <attribute name="name"/>
+    <attribute name="value"/>
+        project.setProperty(attributes.get("name"), attributes.get("value"));
+</scriptdef>
+
+<scriptdef language="javascript" name="lower">
+    <attribute name="string" />
+    <attribute name="to" />
+    project.setProperty( attributes.get( "to" ),attributes.get( "string" ).toLowerCase() );
+</scriptdef>
+
+<target name="all">
+
+    <delete file="${homedir}${file.separator}UPDATE.NAMES.${rel}"/> 
+    <delete file="${homedir}${file.separator}build${file.separator}log${file.separator}${rel}.UPDATE.RESULT.${OsExtn}.log"/>    
+    <delete dir="${homedir}${file.separator}build${file.separator}log${file.separator}${rel}.UPDATE.RESULT"/>
+    <scp trust="true" failonerror="false" file="t24bldin:${t24bldinpasswd}@10.93.5.153:${integUtilPath}/Artifacts/UPDATE.NAMES.${rel}" todir="${homedir}"/>
+<!-- Process Updates-->
+    <if>
+        <available file="${homedir}${file.separator}UPDATE.NAMES.${rel}" type="file"/>
+        <then>
+            <lower string="${rel}" to="rel_lower" />
+            <delete dir="${homedir}${file.separator}..${file.separator}${rel}.BP"/>
+            <mkdir dir="${homedir}${file.separator}..${file.separator}${rel}.BP"/>
+            <scp trust="true" file="t24bldin:${t24bldinpasswd}@10.93.5.153:${RegPathT24BP}/${rel_lower}/T24_BP.tar" todir="${homedir}${file.separator}..${file.separator}${rel}.BP"/>
+            <untar src="${homedir}${file.separator}..${file.separator}${rel}.BP${file.separator}T24_BP.tar" dest="${homedir}${file.separator}..${file.separator}${rel}.BP"/>
+            <loadfile property="UpdFile" srcfile="${homedir}${file.separator}UPDATE.NAMES.${rel}"/>
+            <for param="line" list="${UpdFile}" delimiter="${line.separator}">
+              <sequential>
+                <echo>@{line}</echo>
+                <propertyreset name="TempUpdName" value="@{line}"/>
+                <antcall target="Getsource"/>
+              </sequential>
+            </for>
+        </then>
+    </if>   
+    
+<!-- Display compilation result -->
+    <available file="${homedir}${file.separator}build${file.separator}log${file.separator}${rel}.UPDATE.RESULT.${OsExtn}.log" type="file" property="T24UpdResult"/>
+    <if>
+        <isset property="T24UpdResult" />
+        <then>
+            <!-- remove <scp trust="true" file="${homedir}${file.separator}build${file.separator}log${file.separator}${rel}.UPDATE.RESULT.${OsExtn}.log" todir="t24bldin:${t24bldinpasswd}@10.93.5.153:/${integUtilPath}/Artifacts" /> -->
+            <fail message="Updates failed due to compilation failure"/>
+        </then>
+        <else>
+            <echo message="Updates successfull..!"/>
+            <echo message="${OsExtn} - All updates successfull..!" output="${homedir}${file.separator}build${file.separator}log${file.separator}${rel}.UPDATE.RESULT.${OsExtn}.log" append="true"/>
+           <!-- remove <scp trust="true" file="${homedir}${file.separator}build${file.separator}log${file.separator}${rel}.UPDATE.RESULT.${OsExtn}.log" todir="t24bldin:${t24bldinpasswd}@10.93.5.153:/${integUtilPath}/Artifacts" /> -->
+        </else>
+    </if>
+    
+</target>
+
+<target name="Compile">
+     <condition property="isWindows">                
+         <os family="windows" />        
+     </condition>
+    <if>
+       <equals arg1="${isWindows}" arg2="true" />
+	<then>
+           <property name="exectype" value="cmd"/>
+        </then>
+    <else>
+        <property name="exectype" value="sh"/>
+    </else>
+    </if>
+    <propertyreset name="LogfilePath" value="${homedir}${file.separator}build${file.separator}log${file.separator}${TempUpdName}.log"/>
+    <delete file="${homedir}${file.separator}build${file.separator}log${file.separator}${TempUpdName}.log"/>
+         
+       <delete dir="${env.TAFJ_HOME}${file.separator}tafc_components"/>
+       <mkdir dir="${env.TAFJ_HOME}${file.separator}tafc_components"/>
+       <move todir="${env.TAFJ_HOME}${file.separator}tafc_components">
+             <fileset dir="${homedir}${file.separator}UPDATE.SOURCE${file.separator}${TempUpdName}.SOURCE${file.separator}${Prod}${file.separator}tafc_components" includes="**/*"/>
+       </move>
+       <!--Compile Updates in TAFC using Component Build --> 
+
+            <propertyreset name="FailText" value="BUILD FAILED"/>
+            <echo message="Compiling Updates in TAFC ..."/>
+            <exec dir="${homedir}${file.separator}UPDATE.SOURCE${file.separator}${TempUpdName}.SOURCE${file.separator}T24BuildDependencies" executable="${exectype}" output="${homedir}${file.separator}build${file.separator}log${file.separator}${TempUpdName}.log" append="true">
+                <env key="T24_HOME" value="${homedir}${file.separator}..${file.separator}${rel}.BP${file.separator}T24_BP" /> 
+                <arg value="ant" />
+                <arg value="release-tafc" />
+                <arg value="-Divy.buildlist.includes=${Prod}${file.separator}${CompName}${file.separator}version.xml" />
+            </exec>
+            <concat destfile="${homedir}${file.separator}build${file.separator}log${file.separator}${TempUpdName}.log" append="true">
+                <filelist dir="${homedir}${file.separator}UPDATE.SOURCE${file.separator}${TempUpdName}.SOURCE${file.separator}build${file.separator}log" files="${CompName}-dist.log"/>
+            </concat>
+            <!-- Copy libraries -->
+            <copy failonerror="false" todir="${homedir}${file.separator}CLIENT.TARS${file.separator}${TempUpdName}_${UpdExtn}${file.separator}t24lib${file.separator}${CompLower}" overwrite="true" flatten="true" >
+                <fileset dir="${homedir}${file.separator}UPDATE.SOURCE${file.separator}${TempUpdName}.SOURCE${file.separator}build${file.separator}${CompName}${file.separator}build${file.separator}dist" includes="lib${file.separator}data${file.separator}cpp${file.separator}*, lib${file.separator}t24service${file.separator}cpp${file.separator}*" />
+            </copy>
+            <!-- Copy binaries -->
+            <copy failonerror="false" todir="${homedir}${file.separator}CLIENT.TARS${file.separator}${TempUpdName}_${UpdExtn}${file.separator}t24bin${file.separator}${CompLower}" overwrite="true" flatten="true" >
+           <fileset dir="${homedir}${file.separator}UPDATE.SOURCE${file.separator}${TempUpdName}.SOURCE${file.separator}build${file.separator}${CompName}${file.separator}build${file.separator}Utils" includes="**/*" excludes="*.b"/>
+           </copy>
+
+
+            <!-- Copy extensions -->
+           <condition property="pathExist" else="false">
+		<available file="${homedir}${file.separator}UPDATE.SOURCE${file.separator}${TempUpdName}.SOURCE${file.separator}build${file.separator}${CompName}${file.separator}build${file.separator}dist${file.separator}lib${file.separator}proxyAdaptor${file.separator}cpp" type="dir"/>
+  	    </condition> 
+           <if>
+		<equals arg1="${pathExist}" arg2="true"/>
+            <then> 
+            <mkdir dir="${homedir}${file.separator}CLIENT.TARS${file.separator}${TempUpdName}_${UpdExtn}${file.separator}Extensions${file.separator}" />            
+            <mkdir dir="${homedir}${file.separator}CLIENT.TARS${file.separator}${TempUpdName}_${UpdExtn}${file.separator}Extensions${file.separator}${CompName}" />
+            <mkdir dir="${homedir}${file.separator}CLIENT.TARS${file.separator}${TempUpdName}_${UpdExtn}${file.separator}Extensions${file.separator}${CompName}${file.separator}t24Proxy" />
+            <mkdir dir="${homedir}${file.separator}CLIENT.TARS${file.separator}${TempUpdName}_${UpdExtn}${file.separator}Extensions${file.separator}${CompName}${file.separator}include" />
+            <copy failonerror="false" todir="${homedir}${file.separator}CLIENT.TARS${file.separator}${TempUpdName}_${UpdExtn}${file.separator}Extensions${file.separator}${CompName}${file.separator}t24Proxy" overwrite="true" flatten="true" >
+                <fileset dir="${homedir}${file.separator}UPDATE.SOURCE${file.separator}${TempUpdName}.SOURCE${file.separator}build${file.separator}${CompName}${file.separator}build${file.separator}dist" includes="lib${file.separator}proxyAdaptor${file.separator}cpp${file.separator}*" />
+            </copy>
+            <copy failonerror="false" todir="${homedir}${file.separator}CLIENT.TARS${file.separator}${TempUpdName}_${UpdExtn}${file.separator}Extensions${file.separator}${CompName}${file.separator}include" overwrite="true" flatten="true" >
+                <fileset dir="${homedir}${file.separator}UPDATE.SOURCE${file.separator}${TempUpdName}.SOURCE${file.separator}build${file.separator}${CompName}${file.separator}build${file.separator}dist" includes="include${file.separator}*" />
+            </copy>     
+
+            <if>
+		<equals arg1="${isWindows}" arg2="true" />
+	    <then>
+            <mkdir dir="${homedir}${file.separator}CLIENT.TARS${file.separator}${TempUpdName}_${UpdExtn}${file.separator}Extensions${file.separator}${CompName}${file.separator}t24ws" /> 
+            <copy failonerror="false" todir="${homedir}${file.separator}CLIENT.TARS${file.separator}${TempUpdName}_${UpdExtn}${file.separator}Extensions${file.separator}${CompName}${file.separator}t24ws" overwrite="true" flatten="true" >
+                <fileset dir="${homedir}${file.separator}UPDATE.SOURCE${file.separator}${TempUpdName}.SOURCE${file.separator}build${file.separator}${CompName}${file.separator}build${file.separator}dist" includes="lib${file.separator}ws${file.separator}dotnet${file.separator}*">
+                </fileset>
+            </copy>
+            </then>
+            </if>
+
+            </then>
+            </if>
+    <tar longfile="gnu" destfile="${homedir}${file.separator}CLIENT.TARS${file.separator}${TempUpdName}_${UpdExtn}.tar" basedir="${homedir}${file.separator}CLIENT.TARS" includes="${TempUpdName}_${UpdExtn}${file.separator}**"/>
+    <delete dir="${homedir}${file.separator}CLIENT.TARS${file.separator}${TempUpdName}_${UpdExtn}"/>
+    <!-- remove <delete dir="${homedir}${file.separator}UPDATE.SOURCE${file.separator}${TempUpdName}.SOURCE"/> -->
+    <echo message="Checking log..."/>
+    <local name="CompileResult"/>
+    <loadfile property="CompileResult" srcfile="${LogfilePath}">       
+     <filterchain>        
+       <linecontainsregexp>           
+         <regexp pattern="${FailText}"/>         
+       </linecontainsregexp>       
+     </filterchain>    
+    </loadfile>
+    <if>
+        <isset property="CompileResult" />
+        <then>
+            <mkdir dir="${homedir}${file.separator}build${file.separator}log${file.separator}${rel}.UPDATE.RESULT"/>
+            <echo message="${TempUpdName} Update compilation failed..!"/>
+            <copy file="${homedir}${file.separator}build${file.separator}log${file.separator}${TempUpdName}.log" todir="${homedir}${file.separator}build${file.separator}log${file.separator}${rel}.UPDATE.RESULT"/>
+            <echo message="${TempUpdName} Update compilation failed..!" output="${homedir}${file.separator}build${file.separator}log${file.separator}${rel}.UPDATE.RESULT.${OsExtn}.log" append="true"/>
+            <echo message="${CompileResult}" output="${homedir}${file.separator}build${file.separator}log${file.separator}${rel}.UPDATE.RESULT.${OsExtn}.log" append="true"/>
+        </then>
+        <else>
+            <echo message="${TempUpdName} Update compilation Success..!"/>
+<!--            <scp trust="true" file="${homedir}${file.separator}CLIENT.TARS${file.separator}${TempUpdName}_${UpdExtn}.tar" todir="updlive:updlive@10.44.5.110:/storage/T24/updlive/updlive.run/TEMP.UPDATES"/> -->
+        </else>
+    </if>   
+</target>
+
+<target name="Getsource">
+
+    <delete dir="${homedir}${file.separator}UPDATE.SOURCE${file.separator}${TempUpdName}.SOURCE"/>
+    <delete file="${homedir}${file.separator}UPDATE.SOURCE${file.separator}${TempUpdName}.SOURCE.tar"/>
+    <delete file="${homedir}${file.separator}UPDATE.SOURCE${file.separator}${TempUpdName}.SOURCE.tar.gz"/> 
+    <delete dir="${homedir}${file.separator}CLIENT.TARS${file.separator}${TempUpdName}_${UpdExtn}"/>
+    <mkdir dir="${homedir}${file.separator}CLIENT.TARS${file.separator}${TempUpdName}_${UpdExtn}"/>
+
+    <scp trust="true" file="t24bldin:${t24bldinpasswd}@10.93.5.153:${sourcePath}/${rel}/${TempUpdName}.SOURCE.tar.gz" todir="${homedir}${file.separator}UPDATE.SOURCE"/> 
+    <gunzip src="${homedir}${file.separator}UPDATE.SOURCE${file.separator}${TempUpdName}.SOURCE.tar.gz" dest="${homedir}${file.separator}UPDATE.SOURCE"/>
+    <untar src="${homedir}${file.separator}UPDATE.SOURCE${file.separator}${TempUpdName}.SOURCE.tar" dest="${homedir}${file.separator}UPDATE.SOURCE"/>
+
+    <replace dir="${homedir}${file.separator}UPDATE.SOURCE${file.separator}${TempUpdName}.SOURCE" token="${rel}_PLATFORM" value="${rel}_${UpdExtn}">
+      <include name="*.xml"/>
+    </replace>
+    <!-- Move xml, logo files & data records to Update directory -->
+    <move todir="${homedir}${file.separator}CLIENT.TARS${file.separator}${TempUpdName}_${UpdExtn}">
+        <fileset dir="${homedir}${file.separator}UPDATE.SOURCE${file.separator}${TempUpdName}.SOURCE">
+          <include name="*.xml"/>
+        </fileset>
+        <filelist dir="${homedir}${file.separator}UPDATE.SOURCE${file.separator}${TempUpdName}.SOURCE">
+          <file name="critical.png"/>
+          <file name="logo.jpg"/>
+          <file name="update.xsl"/>
+        </filelist>
+        <fileset dir="${homedir}${file.separator}UPDATE.SOURCE${file.separator}${TempUpdName}.SOURCE"  >
+            <filename regex="REC([0-9])\\*"  />
+        </fileset>
+    </move>
+
+<!-- Copy Insert change alone Update directory -->
+    <for param="Ins">
+    <path id="Ins.list">
+        <fileset dir="${homedir}${file.separator}UPDATE.SOURCE${file.separator}${TempUpdName}.SOURCE" includes="I_*" >
+            <type type="file" />
+        </fileset>
+    </path>
+    <sequential>
+        <local name="Ins_lc" />
+        <basename property="Ins_lc" file="@{Ins}" />
+        <local name="CheckInsProp" />
+        <loadfile property="CheckInsProp" srcfile="${homedir}${file.separator}UPDATE.SOURCE${file.separator}${TempUpdName}.SOURCE${file.separator}${TempUpdName}">       
+         <filterchain>        
+           <linecontainsregexp>           
+             <regexp pattern="${Ins_lc}"/>         
+           </linecontainsregexp>       
+         </filterchain>    
+        </loadfile>     
+   
+        <if>
+            <isset property="CheckInsProp" />
+            <then>
+                <copy file="${homedir}${file.separator}UPDATE.SOURCE${file.separator}${TempUpdName}.SOURCE${file.separator}${Ins_lc}" todir="${homedir}${file.separator}CLIENT.TARS${file.separator}${TempUpdName}_${UpdExtn}"/>
+            </then>
+        </if>   
+    </sequential>
+    </for>
+    
+<!-- Move update release record to Update directory -->
+    <move file="${homedir}${file.separator}UPDATE.SOURCE${file.separator}${TempUpdName}.SOURCE${file.separator}${TempUpdName}" todir="${homedir}${file.separator}CLIENT.TARS${file.separator}${TempUpdName}_${UpdExtn}"/>
+<!-- Below bit of code is to extract the component name from update name -->
+    <propertyregex property="CompName"
+          input="${TempUpdName}"
+          regexp="\\*_([^\.]*)_\\*"
+          select="\1"
+          casesensitive="false" />
+    
+     <propertyregex property="Prod"
+          input="${CompName}"
+          regexp="([^\.]*)_\\*"
+          select="\1"
+          casesensitive="false" />
+
+    <lower string="${CompName}" to="comp_lower" />
+    <propertyreset name="CompLower" value="${comp_lower}"/>
+    
+    <mkdir dir="${homedir}${file.separator}CLIENT.TARS${file.separator}${TempUpdName}_${UpdExtn}${file.separator}t24lib${file.separator}${CompLower}"/>
+    <mkdir dir="${homedir}${file.separator}CLIENT.TARS${file.separator}${TempUpdName}_${UpdExtn}${file.separator}t24bin${file.separator}${CompLower}"/>
+    
+    <antcall target="Compile"/>
+    
+</target>
+
+</project>

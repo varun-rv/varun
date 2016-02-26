@@ -1,0 +1,151 @@
+    <project name="T24BuildTafj" default="all" basedir=".">
+        
+	<scriptdef language="javascript" name="lower">
+		<attribute name="string" />
+		<attribute name="to" />
+		project.setProperty( attributes.get( "to" ),attributes.get( "string" ).toLowerCase() );
+	</scriptdef>
+
+    <property environment="env" />
+    
+	
+	
+	<property name="dist.dir" value="${basedir}${file.separator}DIST"/>
+    <property name="tafj.temp.rel.dir" value="${dist.dir}${file.separator}temp.release" />
+
+    <taskdef resource="net/sf/antcontrib/antlib.xml" classpath="${dist.dir}${file.separator}T24DEV${file.separator}T24BuildDependencies${file.separator}resources${file.separator}ant-contrib-1.0b3.jar" />
+
+    <path id="javac.classpath">
+            <fileset dir="${env.JAVA_HOME}${file.separator}lib">
+                    <include name="**${file.separator}tools.jar" />
+            </fileset>
+    </path>
+
+    <target name="all">
+	    <echo message="*************Target not specified ***************"/>
+		
+	<echo message="----------------------------------------------------------------------------"/>
+    <echo message="|                    TAFJ Dist Packager  - Help                             |"/>
+    <echo message="----------------------------------------------------------------------------"/>
+	<echo message="Target - TafjCompile 	Desc - Run TAFJ Component Build"/>
+	<echo message="Target - TafjPackage    	Desc - Package Library jars"/>
+	<echo message="Target - DistClean      	Desc - Remove Dist specfic files"/>
+	<echo message="Target - Prepare-Dist	Desc - Call the targets in above order"/>
+	
+	
+	</target>
+	
+	<target name="Prepare-Dist" depends="TafjCompile,TafjPackage,DistClean" >
+			<echo message="*************Dist Preparation Completed****************"/>
+	</target>
+	
+	
+	 <target name="TafjCompile">
+	 
+	
+					<exec dir="${dist.dir}${file.separator}T24DEV${file.separator}T24BuildDependencies" executable="sh" >
+						<arg value="ant" />
+						<arg value="run-tcomponent-build" />
+					</exec>
+
+	  
+	 </target>
+	
+	
+           
+   	<!--Package TAFC temp.release-->           
+    <target name="TafjPackage">
+	
+    
+	<delete dir="${tafj.temp.rel.dir}${file.separator}t24bin"/>
+    <delete dir="${tafj.temp.rel.dir}${file.separator}t24lib"/>
+    <delete dir="${tafj.temp.rel.dir}${file.separator}Extensions"/>
+    
+    <mkdir dir="${tafj.temp.rel.dir}${file.separator}t24lib"/>
+    <mkdir dir="${tafj.temp.rel.dir}${file.separator}Extensions"/>
+        
+    <copy todir="${tafj.temp.rel.dir}${file.separator}t24lib">
+      <fileset dir="${dist.dir}${file.separator}T24DEV${file.separator}build${file.separator}jars" includes="*.jar"/>
+    </copy>
+
+    <!--Extract extensions and libs-->
+	<for param="cmp">
+		<path id="cmp.list">
+			<dirset dir="${dist.dir}${file.separator}T24DEV${file.separator}build" includes="*" excludes="log,jars,header,logs">
+				<type type="dir" />
+			</dirset>
+		</path>
+		<sequential>
+			<local name="cmp_lc" />
+			<basename property="cmp_lc" file="@{cmp}" />
+			
+			<echo message="${cmp_lc}"/>
+			<!-- Copying Libraries-->
+			<copy todir="${tafj.temp.rel.dir}${file.separator}t24lib" overwrite="true" flatten="true" failonerror="false">
+				<fileset dir="${dist.dir}${file.separator}T24DEV${file.separator}build${file.separator}${cmp_lc}${file.separator}build${file.separator}dist" includes="lib${file.separator}t24service${file.separator}java${file.separator}* , lib${file.separator}data${file.separator}java${file.separator}*" />
+			</copy>
+			
+			<!--Copying Extensions-->
+			<condition property="pathExist" else="false">
+				<and>
+					<available file="${dist.dir}${file.separator}T24DEV${file.separator}build${file.separator}${cmp_lc}${file.separator}build${file.separator}dist${file.separator}lib${file.separator}proxyAdaptor${file.separator}java" type="dir"/>
+					<available file="${dist.dir}${file.separator}T24DEV${file.separator}build${file.separator}${cmp_lc}${file.separator}build${file.separator}dist${file.separator}lib${file.separator}ejb${file.separator}tafj" type="dir"/>
+					<available file="${dist.dir}${file.separator}T24DEV${file.separator}build${file.separator}${cmp_lc}${file.separator}build${file.separator}dist${file.separator}lib${file.separator}ws${file.separator}java" type="dir"/>
+				</and>	
+			</condition>
+			 <if>
+			    <equals arg1="${pathExist}" arg2="true"/>
+                <then>
+ 
+				<mkdir dir="${tafj.temp.rel.dir}${file.separator}Extensions${file.separator}${cmp_lc}" />
+				<mkdir dir="${tafj.temp.rel.dir}${file.separator}Extensions${file.separator}${cmp_lc}${file.separator}t24Proxy" />
+				<mkdir dir="${tafj.temp.rel.dir}${file.separator}Extensions${file.separator}${cmp_lc}${file.separator}t24ws" />
+				<mkdir dir="${tafj.temp.rel.dir}${file.separator}Extensions${file.separator}${cmp_lc}${file.separator}t24ejb" />
+
+
+				<copy todir="${tafj.temp.rel.dir}${file.separator}Extensions${file.separator}${cmp_lc}${file.separator}t24Proxy" overwrite="true" flatten="true" >
+					<fileset dir="${dist.dir}${file.separator}T24DEV${file.separator}build${file.separator}${cmp_lc}${file.separator}build${file.separator}dist" includes="lib${file.separator}proxyAdaptor${file.separator}java${file.separator}*" />
+				</copy>
+			
+				<copy todir="${tafj.temp.rel.dir}${file.separator}Extensions${file.separator}${cmp_lc}${file.separator}t24ejb" overwrite="true" flatten="true" >
+					<fileset dir="${dist.dir}${file.separator}T24DEV${file.separator}build${file.separator}${cmp_lc}${file.separator}build${file.separator}dist" includes="lib${file.separator}ejb${file.separator}tafj${file.separator}*" />
+				</copy>
+			
+				<copy todir="${tafj.temp.rel.dir}${file.separator}Extensions${file.separator}${cmp_lc}${file.separator}t24ws" overwrite="true" flatten="true" >
+					<fileset dir="${dist.dir}${file.separator}T24DEV${file.separator}build${file.separator}${cmp_lc}${file.separator}build${file.separator}dist${file.separator}lib${file.separator}ws${file.separator}java">
+						<type type="file"/>
+					</fileset>
+				</copy>
+		    
+				<copy todir="${tafj.temp.rel.dir}${file.separator}Extensions${file.separator}${cmp_lc}${file.separator}t24ws" overwrite="true" flatten="true" >
+					<fileset dir="${dist.dir}${file.separator}T24DEV${file.separator}build${file.separator}${cmp_lc}${file.separator}build${file.separator}dist" includes="lib${file.separator}data${file.separator}java${file.separator}*" />
+				</copy>
+				</then>
+			</if>
+			<var name="pathExist" unset="true"/>
+		</sequential>
+	</for>	
+        
+    </target>
+	
+	<target name="DistClean">
+		
+		<delete file="${tafj.temp.rel.dir}${file.separator}BP${file.separator}I_F.SYSGEN"/>
+		<delete file="${tafj.temp.rel.dir}${file.separator}t24lib${file.separator}EB_InternalUtility.jar"/>
+		
+		<move file="${tafj.temp.rel.dir}${file.separator}t24lib${file.separator}EB_API.jar" tofile="${tafj.temp.rel.dir}${file.separator}t24lib${file.separator}EB_API_1.jar"/>
+		
+		<jar destfile="${tafj.temp.rel.dir}${file.separator}t24lib${file.separator}EB_API.jar">
+			<zipfileset src="${tafj.temp.rel.dir}${file.separator}t24lib${file.separator}EB_API_1.jar" excludes="com/temenos/t24/EB_COMPILE_cl.class"/>
+		</jar>
+		
+		<delete file="${tafj.temp.rel.dir}${file.separator}t24lib${file.separator}EB_API_1.jar"/>
+		
+	</target>
+
+    <target name="runjsh">
+    <exec executable="${env.JBCGLOBALDIR}/bin/jsh" />
+    <!--    <exec executable="envt"/> -->
+    </target>
+        
+    </project>
