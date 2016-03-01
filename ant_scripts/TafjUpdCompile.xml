@@ -118,11 +118,11 @@
                 <fileset dir="${homedir}${file.separator}TAFJ.SOURCE${file.separator}${TempUpdName}.SOURCE${file.separator}build${file.separator}jars" includes="*.jar" />
             </copy>
 
-        <copy failonerror="false" todir="${homedir}${file.separator}TAFJ.JARS${file.separator}${TempUpdName}_${UpdExtn}" overwrite="true" flatten="true" >
+         <copy failonerror="false" todir="${homedir}${file.separator}TAFJ.JARS${file.separator}${TempUpdName}_${UpdExtn}" overwrite="true" flatten="true" >
                 <fileset dir="${homedir}${file.separator}TAFJ.SOURCE${file.separator}${TempUpdName}.SOURCE${file.separator}build${file.separator}${CompName}${file.separator}build${file.separator}dist" includes="lib${file.separator}data${file.separator}java${file.separator}*, lib${file.separator}t24service${file.separator}java${file.separator}*" />
-            </copy>
+         </copy>
 
-             <path id="precompile.path.id">
+         <path id="precompile.path.id">
     		<pathelement location="${temn.tafj.directory.precompile}" />
 	     </path>
 	     <property name="precompile.path.ref" refid="precompile.path.id" />
@@ -173,6 +173,20 @@
             </then>
             </if>
 
+		<resourcecount property="count.libs">
+            <fileset dir="${homedir}${file.separator}TAFJ.JARS${file.separator}${TempUpdName}_${UpdExtn}">
+                <include name="*.jar"/>
+            </fileset>
+        </resourcecount>
+        <echo message="Count of jars in ${TempUpdName} is ${count.libs}"/>
+        
+        <if>
+            <equals arg1="${count.libs}" arg2="0" trim="true"/>
+            <then>
+                <property name="nolibs" value="No Jars formed"/> 
+            </then>
+        </if>
+			
 	<jar destfile="${homedir}${file.separator}TAFJ.JARS${file.separator}${TempUpdName}_${UpdExtn}.jar">
     	 	<fileset dir="${homedir}${file.separator}TAFJ.JARS" includes="${TempUpdName}_${UpdExtn}${file.separator}**/*" />
  	</jar>
@@ -202,7 +216,22 @@
             <echo message="${TempUpdName} Update compilation Success..!"/>
 <!--            <scp trust="true" file="${homedir}${file.separator}TAFJ.JARS${file.separator}${TempUpdName}_${UpdExtn}.tar" todir="updlive:updlive@10.44.5.110:/storage/T24/updlive/updlive.run/TEMP.UPDATES"/> -->
         </else>
+    </if>
+
+	<if>
+        <isset property="nolibs" />
+        <then>
+            <mkdir dir="${homedir}${file.separator}build${file.separator}log${file.separator}${rel}.UPDATE.RESULT"/> 
+            <echo message="${TempUpdName} Update has no jars..!"/>
+            <echo message="${TempUpdName} Update has no jars..!" output="${homedir}${file.separator}build${file.separator}log${file.separator}${rel}.UPDATE.RESULT.${OsExtn}.log" append="true"/>
+            <copy file="${homedir}${file.separator}build${file.separator}log${file.separator}${TempUpdName}.log" todir="${homedir}${file.separator}build${file.separator}log${file.separator}${rel}.UPDATE.RESULT"/>
+        </then>
     </if>   
+
+    <var name="count.libs" unset="true"/>
+    <var name="nolibs" unset="true"/>
+
+	
 </target>
 
 <target name="Getsource">

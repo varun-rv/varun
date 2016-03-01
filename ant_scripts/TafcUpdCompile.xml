@@ -156,6 +156,10 @@
             </then>
             </if>
 
+            <antcall>
+                 <target name="jshow.check" />
+            </antcall>
+
          <resourcecount property="count.libs">
             <fileset dir="${homedir}${file.separator}CLIENT.TARS${file.separator}${TempUpdName}_${UpdExtn}${file.separator}t24lib${file.separator}${CompLower}">
                 <include name="*"/>
@@ -293,5 +297,25 @@
     <antcall target="Compile"/>
     
 </target>
+
+
+     <target name="jshow.check">
+            <mkdir dir="${homedir}${file.separator}UPD.BP"/>
+            <echo message="*************Run jsh****************"/>
+            <exec executable="${env.TAFC_HOME}/bin/jsh" />
+            <exec executable="envt"/>
+            <scp trust="true" failonerror="false" file="t24bldin:${t24bldinpasswd}@10.93.5.153:${integUtilPath}${file.separator}UPDATE.JSHOW.UTP" todir="${homedir}${file.separator}UPD.BP"/>
+
+            <exec executable="EB.COMPILE" dir="${homedir}">
+                <arg value="UPD.BP UPDATE.JSHOW.UTP"/>
+            </exec>
+              
+            <echo message="*************Running Jshow Check****************"/>
+            <exec executable="UPDATE.JSHOW.UTP" dir="${homedir}">
+                <arg value="${TempUpdName} ${UpdExtn}"/>
+            </exec>  
+     </target>
+
+
 
 </project>
