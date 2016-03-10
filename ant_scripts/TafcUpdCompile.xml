@@ -91,7 +91,7 @@
             
 			<exec dir="${homedir}${file.separator}UPDATE.SOURCE${file.separator}${TempUpdName}.SOURCE${file.separator}T24BuildDependencies" executable="cmd" output="${homedir}${file.separator}build${file.separator}log${file.separator}${TempUpdName}.log" append="true">
                 <env key="T24_HOME" value="${homedir}${file.separator}..${file.separator}${rel}.BP${file.separator}T24_BP" /> 
-				<arg value="/c">
+				<arg value="/c" />
                 <arg value="${env.ANT_HOME}${file.separator}bin${file.separator}ant" />
                 <arg value="release-tafc" />
                 <arg value="-Divy.buildlist.includes=${Prod}${file.separator}${CompName}${file.separator}version.xml" />
@@ -303,7 +303,6 @@
             <mkdir dir="${homedir}${file.separator}UPD.BP"/>
             <echo message="*************Run jsh****************"/>
             <exec executable="${env.TAFC_HOME}/bin/jsh" />
-            <exec executable="envt"/>
             <scp trust="true" failonerror="false" file="t24bldin:${t24bldinpasswd}@10.93.5.153:${integUtilPath}${file.separator}UPDATE.JSHOW.UTP" todir="${homedir}${file.separator}UPD.BP"/>
 
             <exec executable="EB.COMPILE" dir="${homedir}">

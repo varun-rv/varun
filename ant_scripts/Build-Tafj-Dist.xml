@@ -10,10 +10,10 @@
     
 	
 	
-	<property name="dist.dir" value="${basedir}${file.separator}SYSTEM${file.separator}${buildrel}${file.separator}DIST"/>
-    	<property name="tafj.temp.rel.dir" value="${dist.dir}${file.separator}temp.release" />
+	<property name="dist.dir" value="${basedir}${file.separator}DIST"/>
+    <property name="tafj.temp.rel.dir" value="${dist.dir}${file.separator}temp.release" />
 
-    <taskdef resource="net/sf/antcontrib/antlib.xml" classpath="${DevWrkspce}${file.separator}T24BuildDependencies${file.separator}resources${file.separator}ant-contrib-1.0b3.jar" />
+    <taskdef resource="net/sf/antcontrib/antlib.xml" classpath="${dist.dir}${file.separator}T24DEV${file.separator}T24BuildDependencies${file.separator}resources${file.separator}ant-contrib-1.0b3.jar" />
 
     <path id="javac.classpath">
             <fileset dir="${env.JAVA_HOME}${file.separator}lib">
@@ -42,17 +42,13 @@
 	
 	 <target name="TafjCompile">
 	 
-		<exec executable="build.sh" dir="${DevWrkspce}${file.separator}T24BuildDependencies">
-            		<arg value="release"/>
-        	</exec>   
+	
+					<exec dir="${dist.dir}${file.separator}T24DEV${file.separator}T24BuildDependencies" executable="sh" >
+						<arg value="ant" />
+						<arg value="run-tcomponent-build" />
+					</exec>
+
 	  
-	<!-- Copy build directory to DIST directory -->
-
-		<copy todir="${dist.dir}${file.separator}T24DEV${file.separator}build">
-			<fileset dir="${DevWrkspce}${file.separator}build" includes="**/*"/>
-		</copy>
-
-
 	 </target>
 	
 	
@@ -62,20 +58,20 @@
 	
     
 	<delete dir="${tafj.temp.rel.dir}${file.separator}t24bin"/>
-    	<delete dir="${tafj.temp.rel.dir}${file.separator}t24lib"/>
-    	<delete dir="${tafj.temp.rel.dir}${file.separator}Extensions"/>
+    <delete dir="${tafj.temp.rel.dir}${file.separator}t24lib"/>
+    <delete dir="${tafj.temp.rel.dir}${file.separator}Extensions"/>
     
-    	<mkdir dir="${tafj.temp.rel.dir}${file.separator}t24lib"/>
-    	<mkdir dir="${tafj.temp.rel.dir}${file.separator}Extensions"/>
+    <mkdir dir="${tafj.temp.rel.dir}${file.separator}t24lib"/>
+    <mkdir dir="${tafj.temp.rel.dir}${file.separator}Extensions"/>
         
     <copy todir="${tafj.temp.rel.dir}${file.separator}t24lib">
-      <fileset dir="${DevWrkspce}${file.separator}build${file.separator}jars" includes="*.jar"/>
+      <fileset dir="${dist.dir}${file.separator}T24DEV${file.separator}build${file.separator}jars" includes="*.jar"/>
     </copy>
 
     <!--Extract extensions and libs-->
 	<for param="cmp">
 		<path id="cmp.list">
-			<dirset dir="${DevWrkspce}${file.separator}build" includes="*" excludes="log,jars,header,logs">
+			<dirset dir="${dist.dir}${file.separator}T24DEV${file.separator}build" includes="*" excludes="log,jars,header,logs">
 				<type type="dir" />
 			</dirset>
 		</path>
@@ -86,15 +82,15 @@
 			<echo message="${cmp_lc}"/>
 			<!-- Copying Libraries-->
 			<copy todir="${tafj.temp.rel.dir}${file.separator}t24lib" overwrite="true" flatten="true" failonerror="false">
-				<fileset dir="${DevWrkspce}${file.separator}build${file.separator}${cmp_lc}${file.separator}build${file.separator}dist" includes="lib${file.separator}t24service${file.separator}java${file.separator}* , lib${file.separator}data${file.separator}java${file.separator}*" />
+				<fileset dir="${dist.dir}${file.separator}T24DEV${file.separator}build${file.separator}${cmp_lc}${file.separator}build${file.separator}dist" includes="lib${file.separator}t24service${file.separator}java${file.separator}* , lib${file.separator}data${file.separator}java${file.separator}*" />
 			</copy>
 			
 			<!--Copying Extensions-->
 			<condition property="pathExist" else="false">
 				<and>
-					<available file="${DevWrkspce}${file.separator}build${file.separator}${cmp_lc}${file.separator}build${file.separator}dist${file.separator}lib${file.separator}proxyAdaptor${file.separator}java" type="dir"/>
-					<available file="${DevWrkspce}${file.separator}build${file.separator}${cmp_lc}${file.separator}build${file.separator}dist${file.separator}lib${file.separator}ejb${file.separator}tafj" type="dir"/>
-					<available file="${DevWrkspce}${file.separator}build${file.separator}${cmp_lc}${file.separator}build${file.separator}dist${file.separator}lib${file.separator}ws${file.separator}java" type="dir"/>
+					<available file="${dist.dir}${file.separator}T24DEV${file.separator}build${file.separator}${cmp_lc}${file.separator}build${file.separator}dist${file.separator}lib${file.separator}proxyAdaptor${file.separator}java" type="dir"/>
+					<available file="${dist.dir}${file.separator}T24DEV${file.separator}build${file.separator}${cmp_lc}${file.separator}build${file.separator}dist${file.separator}lib${file.separator}ejb${file.separator}tafj" type="dir"/>
+					<available file="${dist.dir}${file.separator}T24DEV${file.separator}build${file.separator}${cmp_lc}${file.separator}build${file.separator}dist${file.separator}lib${file.separator}ws${file.separator}java" type="dir"/>
 				</and>	
 			</condition>
 			 <if>
@@ -108,21 +104,21 @@
 
 
 				<copy todir="${tafj.temp.rel.dir}${file.separator}Extensions${file.separator}${cmp_lc}${file.separator}t24Proxy" overwrite="true" flatten="true" >
-					<fileset dir="${DevWrkspce}${file.separator}build${file.separator}${cmp_lc}${file.separator}build${file.separator}dist" includes="lib${file.separator}proxyAdaptor${file.separator}java${file.separator}*" />
+					<fileset dir="${dist.dir}${file.separator}T24DEV${file.separator}build${file.separator}${cmp_lc}${file.separator}build${file.separator}dist" includes="lib${file.separator}proxyAdaptor${file.separator}java${file.separator}*" />
 				</copy>
 			
 				<copy todir="${tafj.temp.rel.dir}${file.separator}Extensions${file.separator}${cmp_lc}${file.separator}t24ejb" overwrite="true" flatten="true" >
-					<fileset dir="${DevWrkspce}${file.separator}build${file.separator}${cmp_lc}${file.separator}build${file.separator}dist" includes="lib${file.separator}ejb${file.separator}tafj${file.separator}*" />
+					<fileset dir="${dist.dir}${file.separator}T24DEV${file.separator}build${file.separator}${cmp_lc}${file.separator}build${file.separator}dist" includes="lib${file.separator}ejb${file.separator}tafj${file.separator}*" />
 				</copy>
 			
 				<copy todir="${tafj.temp.rel.dir}${file.separator}Extensions${file.separator}${cmp_lc}${file.separator}t24ws" overwrite="true" flatten="true" >
-					<fileset dir="${DevWrkspce}${file.separator}build${file.separator}${cmp_lc}${file.separator}build${file.separator}dist${file.separator}lib${file.separator}ws${file.separator}java">
+					<fileset dir="${dist.dir}${file.separator}T24DEV${file.separator}build${file.separator}${cmp_lc}${file.separator}build${file.separator}dist${file.separator}lib${file.separator}ws${file.separator}java" includes="**/*">
 						<type type="file"/>
 					</fileset>
 				</copy>
 		    
 				<copy todir="${tafj.temp.rel.dir}${file.separator}Extensions${file.separator}${cmp_lc}${file.separator}t24ws" overwrite="true" flatten="true" >
-					<fileset dir="${DevWrkspce}${file.separator}build${file.separator}${cmp_lc}${file.separator}build${file.separator}dist" includes="lib${file.separator}data${file.separator}java${file.separator}*" />
+					<fileset dir="${dist.dir}${file.separator}T24DEV${file.separator}build${file.separator}${cmp_lc}${file.separator}build${file.separator}dist" includes="lib${file.separator}data${file.separator}java${file.separator}*" />
 				</copy>
 				</then>
 			</if>
